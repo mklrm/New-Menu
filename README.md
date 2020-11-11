@@ -6,7 +6,7 @@ Yes, the code is horrid, what it can do is take a list of objects and throw them
 
 In the default mode you can pick one item by pressing enter:
 
-New-Menu -InputObject $myArrayOfObjects | Foreach-Object { <# Do something with the selected object #> }
+$myPick = New-Menu -InputObject $myArrayOfObjects
 
 You can select multiple menu items in multiselect mode by pressing space on an item and then return them by pressing enter:
 
