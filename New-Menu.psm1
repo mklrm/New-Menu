@@ -21,15 +21,13 @@ function New-Menu
         [ValidateSet('Multiselect','List','Default')]
         [String]$Mode = 'Default',
         # Horizontal position of the upper left corner
-        [int]$X = 0, # TODO Only accept positive values, do the same for Y, W and H
+        [ValidateRange(-1, [int]::MaxValue)][int]$X = -1,
         # Vertical position of the upper left corner
-        [int]$Y = 0,
-        # Disable automatically resizing the menu to fit items
-        [Switch]$NoAutoSize,
+        [ValidateRange(-1, [int]::MaxValue)][int]$Y = -1,
         # Width of the menu
-        [Int]$Width = 0,
+        [ValidateRange(-1, [int]::MaxValue)][Int]$Width = -1,
         # Height of the menu
-        [Int]$Height = 0,
+        [ValidateRange(-1, [int]::MaxValue)][Int]$Height = -1,
         # Character to write on empty cells like edges
         [Char]$Character = ' ',
         # Foreground color
@@ -123,11 +121,28 @@ function New-Menu
 
         $menu | Add-Member -MemberType NoteProperty -Name ID -Value (Get-Random)
 
+        # NOTE This is a sin:
+        $initX = 0
+        $initY = 0
+        $initWidth = 0
+        $initHeight = 0
+        if ($X -ne -1 ) {
+            $initX = $X
+        }
+        if ($Y -ne -1 ) {
+            $initY = $Y
+        }
+        if ($Width -ne -1 ) {
+            $initWidth = $Width
+        }
+        if ($Height -ne -1 ) {
+            $initHeight = $Height
+        }
+
         $menu | Add-Member -MemberType NoteProperty -Name Square -Value (
-            New-Square -X $X -Y $Y -Width $Width -Height $Height -Character $Character `
+            New-Square -X $initX -Y $initY -Width $initWidth -Height $initHeight -Character $Character `
                 -ForegroundColor $ItemColor -BackgroundColor $BackgroundColor
         )
-
 
         $menu | Add-Member -MemberType ScriptMethod -Name SetSquareWidthToItemWidth -Value `
         {
@@ -150,23 +165,18 @@ function New-Menu
             $this.SetSquareHeightToItemHeight()
         }
 
-        # Automatically size the menu to fit items on it
-        #if ((-not $NoAutoSize.IsPresent) -and ($menu.Content.Items)) {
-        #    $menu.SetSquareToItemSize()
-        #}
-
-        if ($Width -eq 0 -and $Height -eq 0) {
+        if ($Width -eq -1 -and $Height -eq -1) {
             $menu.SetSquareToItemSize()
-        } elseif ($Width -eq 0) {
+        } elseif ($Width -eq -1) {
             $menu.SetSquareWidthToItemWidth()
-        } elseif ($Height -eq 0) {
+        } elseif ($Height -eq -1) {
             $menu.SetSquareHeightToItemHeight()
         }
 
         $menu.Square.GrowWidth($menu.EdgeWidth * 2)
         $menu.Square.GrowHeight($menu.EdgeHeight * 2)
          
-        if ($X -eq 0 -and $Y -eq 0) {
+        if ($X -eq -1 -and $Y -eq -1) {
             # Move the menu horizontally to the middle of the window
             $menu.Square.SetPosition(
                 ([Math]::Floor($Host.UI.RawUI.WindowSize.Width / 2) - $menu.Square.Width),
