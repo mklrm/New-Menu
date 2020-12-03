@@ -23,15 +23,15 @@ function New-Menu
         [ValidateSet('Multiselect','List','Default')]
         [String]$Mode = 'Default',
         # Horizontal position of the upper left corner
-        [int]$X = 0,
+        [int]$X = $null,
         # Vertical position of the upper left corner
-        [int]$Y = $Host.UI.RawUI.WindowPosition.Y,
+        [int]$Y = $null,
+        # Disable automatically resizing the menu to fit items
+        [Switch]$NoAutoSize,
         # Width of the menu
         [Int]$Width = 12,
         # Height of the menu
         [Int]$Height = 6,
-        # Disable automatically resizing the menu to fit items
-        [Switch]$NoAutoSize,
         # Character to write on empty cells like edges
         [Char]$Character = ' ',
         # Foreground color
@@ -106,7 +106,7 @@ function New-Menu
         $firstMenuItemLineNumber = 0 # Line on which to write the first displayed item
          $lastMenuItemLineNumber = 0 # Line on which to write the last displayed item
         $firstDisplayedItemIndex = 0 # Index number of the first item getting displayed
-         $lastDisplayedItemIndex = 0 # Index number of the last item getting displayed
+        # $lastDisplayedItemIndex = 0 # Index number of the last item getting displayed
         
         if ($InputObject -isnot [Array]) {
             $InputObject = @($InputObject)
@@ -129,6 +129,7 @@ function New-Menu
             New-Square -X $X -Y $Y -Width $Width -Height $Height -Character $Character `
                 -ForegroundColor $ItemColor -BackgroundColor $BackgroundColor
         )
+
 
         $menu | Add-Member -MemberType ScriptMethod -Name SetSquareWidthToItemWidth -Value `
         {
@@ -159,20 +160,22 @@ function New-Menu
         $menu.Square.GrowWidth($menu.EdgeWidth * 2)
         $menu.Square.GrowHeight($menu.EdgeHeight * 2)
          
-        # Move the menu horizontally to the middle of the window
-        $menu.Square.SetPosition(
-            ([Math]::Floor($Host.UI.RawUI.WindowSize.Width / 2) - $menu.Square.Width),
-            ($menu.Square.Position.Y)
-        )
-
-        # Move the menu vertically to the middle of the window
-        $menu.Square.SetPosition(
-            ($menu.Square.Position.X),
-            (
-                ($menu.Square.Position.Y + [Math]::Floor($Host.UI.RawUI.WindowSize.Height / 2)) - `
-                [Math]::Floor($menu.Square.Height / 2)
+        if ($X -eq 0 -and $Y -eq 0) {
+            # Move the menu horizontally to the middle of the window
+            $menu.Square.SetPosition(
+                ([Math]::Floor($Host.UI.RawUI.WindowSize.Width / 2) - $menu.Square.Width),
+                ($menu.Square.Position.Y)
             )
-        )
+
+            # Move the menu vertically to the middle of the window
+            $menu.Square.SetPosition(
+                ($menu.Square.Position.X),
+                (
+                    ($menu.Square.Position.Y + [Math]::Floor($Host.UI.RawUI.WindowSize.Height / 2)) - `
+                    [Math]::Floor($menu.Square.Height / 2)
+                )
+            )
+        }
 
         # Set which line to write the first item to the beginning of the menu
         $firstMenuItemLineNumber = $menu.Square.Position.Y + $menu.EdgeHeight
