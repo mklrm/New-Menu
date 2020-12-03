@@ -1,7 +1,5 @@
 # TODO Add HELP and such...
 
-$PSScriptRoot = Split-Path -Parent -Path $MyInvocation.MyCommand.Definition
-
 Get-ChildItem $PSScriptRoot\subModules\*.psm1 | Foreach-Object {
     Import-Module $_.FullName -Force
 }
@@ -23,15 +21,15 @@ function New-Menu
         [ValidateSet('Multiselect','List','Default')]
         [String]$Mode = 'Default',
         # Horizontal position of the upper left corner
-        [int]$X = $null,
+        [int]$X = 0, # TODO Only accept positive values, do the same for Y, W and H
         # Vertical position of the upper left corner
-        [int]$Y = $null,
+        [int]$Y = 0,
         # Disable automatically resizing the menu to fit items
         [Switch]$NoAutoSize,
         # Width of the menu
-        [Int]$Width = 12,
+        [Int]$Width = 0,
         # Height of the menu
-        [Int]$Height = 6,
+        [Int]$Height = 0,
         # Character to write on empty cells like edges
         [Char]$Character = ' ',
         # Foreground color
@@ -105,7 +103,7 @@ function New-Menu
 
         $firstMenuItemLineNumber = 0 # Line on which to write the first displayed item
          $lastMenuItemLineNumber = 0 # Line on which to write the last displayed item
-        $firstDisplayedItemIndex = 0 # Index number of the first item getting displayed
+        #$firstDisplayedItemIndex = 0 # Index number of the first item getting displayed
         # $lastDisplayedItemIndex = 0 # Index number of the last item getting displayed
         
         if ($InputObject -isnot [Array]) {
@@ -153,8 +151,16 @@ function New-Menu
         }
 
         # Automatically size the menu to fit items on it
-        if ((-not $NoAutoSize.IsPresent) -and ($menu.Content.Items)) {
+        #if ((-not $NoAutoSize.IsPresent) -and ($menu.Content.Items)) {
+        #    $menu.SetSquareToItemSize()
+        #}
+
+        if ($Width -eq 0 -and $Height -eq 0) {
             $menu.SetSquareToItemSize()
+        } elseif ($Width -eq 0) {
+            $menu.SetSquareWidthToItemWidth()
+        } elseif ($Height -eq 0) {
+            $menu.SetSquareHeightToItemHeight()
         }
 
         $menu.Square.GrowWidth($menu.EdgeWidth * 2)
@@ -184,7 +190,7 @@ function New-Menu
         $lastMenuItemLineNumber = $menu.Square.Position.Y + $menu.Square.Height - ($menu.EdgeHeight * 2)
 
         # Set the index of the last item to write to correspond to the height of the menu
-        $lastDisplayedItemIndex = $firstDisplayedItemIndex + $menu.Square.Height - ($menu.EdgeHeight * 2)
+        #$lastDisplayedItemIndex = $firstDisplayedItemIndex + $menu.Square.Height - ($menu.EdgeHeight * 2)
 
         # At this point we can simply start picking the indeces from 0, incrementing by 1 on each line
         $i = 0
