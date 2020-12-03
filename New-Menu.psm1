@@ -41,16 +41,20 @@ function New-Menu
         # Indicates a color is both current and selected
         [String]$ItemHighlightedAndSelectedColor = 'Magenta',
         # Edge width
-        [Int]$EdgeWidth = 2,
+        [Int]$EdgeWidth = 2, # TODO Maybe just change the edges to a switch and don't allow resizing
         # Edge height
         [Int]$EdgeHeight = 1
     )
-    
+
     # This Begin-Process-End block is here just to make it possible to 
     # pass the input object from pipeline... for which there's probably 
     # a better way of doing than this.
     Begin {
         $tmp = $()
+        $script:X = $X
+        $script:Y = $Y
+        $script:Width = $Width
+        $script:Height = $Height
     } Process {
         $tmp += $InputObject
     } End {
@@ -121,22 +125,76 @@ function New-Menu
 
         $menu | Add-Member -MemberType NoteProperty -Name ID -Value (Get-Random)
 
+        # TODO Start by not letting anything go below 0 or above these two values
+         $maxWidth = $Host.UI.RawUI.BufferSize.Width
+        $maxHeight = $Host.UI.RawUI.BufferSize.Height
+
+        $menu | Add-Member -MemberType ScriptMethod -Name SetX -Value `
+        {
+            Param(
+                [Int]$newX
+            )
+            if ($newX + $script:Width + ($EdgeWidth * 2) -ge $maxWidth) {
+                $newX = $maxWidth - ($script:Width + $EdgeWidth * 2)
+            }
+            $script:X = $newX
+        }
+
+        $menu | Add-Member -MemberType ScriptMethod -Name SetY -Value `
+        {
+            Param(
+                [Int]$newY
+            )
+            if ($newY + $script:Height + ($EdgeHeight * 2) -gt $maxHeight) {
+                $newY = $maxHeight - ($script:Height + $EdgeHeight * 2)
+            }
+            $script:Y = $newY
+        }
+
+        $menu | Add-Member -MemberType ScriptMethod -Name SetWidth -Value `
+        {
+            Param(
+                [Int]$newWidth
+            )
+            if ($script:X + $newWidth + ($EdgeWidth * 2) -ge $maxWidth) {
+                $script:X = $maxWidth - ($script:Width + $EdgeWidth * 2)
+            }
+            $script:Width = $newWidth
+        }
+
+        $menu | Add-Member -MemberType ScriptMethod -Name SetHeight -Value `
+        {
+            Param(
+                [Int]$newHeight
+            )
+            if ($script:Y + $newHeigth + ($EdgeHeight * 2) -ge $maxHeight) {
+                $script:Y = $maxHeight - ($script:Height + $EdgeHeight * 2)
+            }
+            $script:Height = $newHeight
+        }
+
+        # Peruse these methods to automatically correct menu to within buffer boundaries
+        $menu.SetX($Script:X)
+        $menu.SetY($Script:Y)
+        $menu.SetWidth($Script:Width)
+        $menu.SetHeight($script:Height)
+
         # NOTE This is a sin:
         $initX = 0
         $initY = 0
         $initWidth = 0
         $initHeight = 0
-        if ($X -ne -1 ) {
-            $initX = $X
+        if ($script:X -ne -1 ) {
+            $initX = $script:X
         }
-        if ($Y -ne -1 ) {
-            $initY = $Y
+        if ($script:Y -ne -1 ) {
+            $initY = $script:Y
         }
-        if ($Width -ne -1 ) {
-            $initWidth = $Width
+        if ($script:Width -ne -1 ) {
+            $initWidth = $script:Width
         }
-        if ($Height -ne -1 ) {
-            $initHeight = $Height
+        if ($script:Height -ne -1 ) {
+            $initHeight = $script:Height
         }
 
         $menu | Add-Member -MemberType NoteProperty -Name Square -Value (
@@ -165,18 +223,18 @@ function New-Menu
             $this.SetSquareHeightToItemHeight()
         }
 
-        if ($Width -eq -1 -and $Height -eq -1) {
+        if ($script:Width -eq -1 -and $script:Height -eq -1) {
             $menu.SetSquareToItemSize()
-        } elseif ($Width -eq -1) {
+        } elseif ($script:Width -eq -1) {
             $menu.SetSquareWidthToItemWidth()
-        } elseif ($Height -eq -1) {
+        } elseif ($script:Height -eq -1) {
             $menu.SetSquareHeightToItemHeight()
         }
 
         $menu.Square.GrowWidth($menu.EdgeWidth * 2)
         $menu.Square.GrowHeight($menu.EdgeHeight * 2)
          
-        if ($X -eq -1 -and $Y -eq -1) {
+        if ($script:X -eq -1 -and $script:Y -eq -1) {
             # Move the menu horizontally to the middle of the window
             $menu.Square.SetPosition(
                 ([Math]::Floor($Host.UI.RawUI.WindowSize.Width / 2) - $menu.Square.Width),
