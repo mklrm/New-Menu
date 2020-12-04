@@ -83,7 +83,6 @@ function New-Menu
         if (-not $ItemColor) { $ItemColor = $Host.UI.RawUI.BackgroundColor }
         if (-not $BackgroundColor) { $BackgroundColor = $Host.UI.RawUI.ForegroundColor }
 
-        # TODO Add a title / help text
         # TODO ?-icon for invoking help. No other help texts etc. 
         # required. Just tell user Esc is cancel, Enter confirm.
         # TODO A search function such like pressing / starts taking 
@@ -147,10 +146,20 @@ function New-Menu
             } else {
                 $script:Height = $menu.Content.Items.Count
             }
+        } elseif ($script:Height + $EdgeHeight * 2 -gt $Host.UI.RawUI.WindowSize.Height) {
+            $script:Height = $Host.UI.RawUI.WindowSize.Height - $EdgeHeight * 2
+            # TODO the "- 1" here was just one place where trial and error kinda got us there, not 
+            # perfectly though. If I ever go that nuts, understand why the bottom edge of the menu 
+            # goes missing on what seems like one particular number with the - 1 and anything above 
+            # that number without the - 1
+            # For example, with a WindowSize.Y == 63, bottom edge goes missing at Height 64 but returns 
+            # with Heights beyond it with the - 1, 
+            # Without the magic - 1 it goes missing from 61 and up never to return. I lost track 
+            # of something at some point.
         }
         
         if ($Title) {
-            $script:Height = $script:Height - $Title.Count - 1
+            $script:Height = $script:Height - $Title.Count
         }
 
         if ($script:Y -eq -1) {
@@ -171,10 +180,7 @@ function New-Menu
         }
 
         if ($Title) {
-            $script:Y = $script:Y + $Title.Count + 1
-        }
-
-        if ($Title) {
+            $script:Y = $script:Y + $Title.Count - 1
             $titleWidth = 0
             $titleX = $Script:X
             foreach ($t in $Title) {
@@ -187,7 +193,8 @@ function New-Menu
             }
             if ($titleWidth -gt ($script:Width + $EdgeWidth * 2)) {
                 $titleX = [Math]::Floor($script:X - ($titleWidth - ($script:Width + $EdgeWidth * 2)) / 2)
-            }            $i = $Title.count
+            }
+            $i = $Title.count
             $titleList = foreach ($t in $Title) {
                 $titleY = ($script:Y - $EdgeHeight - $i)
                 New-Square -X $titleX -Y  $titleY `
