@@ -60,15 +60,6 @@ function New-Menu
     } End {
         $InputObject = $tmp
         
-        # TODO I am yet to deal with menus that can not fit their items (NoAutoSize can be forced to do this), 
-        # menus that can't fit the window vertically.
-        # TODO Deal with the above by:
-        # Partially hiding too long items
-        #   Scrolling the item can be added later
-        #     Possibly should add GetItemLength to the content module. That uses GetItemName.
-        # giving an error at some point I guess
-        # I guess I could allow an infinetily small menu too. Like an invisible one.
-
         # NOTE Let's not accept empty strings and such. For now at least. They 
         # break -something-, probably GetItemName in New-MenuContent
         $InputObject = $InputObject | Where-Object { $_ }
@@ -82,6 +73,9 @@ function New-Menu
         if (-not $ItemColor) { $ItemColor = $Host.UI.RawUI.BackgroundColor }
         if (-not $BackgroundColor) { $BackgroundColor = $Host.UI.RawUI.ForegroundColor }
 
+        # TODO Add a title / help text
+        # TODO Trying to move a menu that's the full height of a 
+        # buffer still causes an error
         # TODO ?-icon for invoking help. No other help texts etc. 
         # required. Just tell user Esc is cancel, Enter confirm.
         # TODO A search function such like pressing / starts taking 
@@ -125,131 +119,51 @@ function New-Menu
 
         $menu | Add-Member -MemberType NoteProperty -Name ID -Value (Get-Random)
 
-        # TODO Start by not letting anything go below 0 or above these two values
-         $maxWidth = $Host.UI.RawUI.BufferSize.Width
-        $maxHeight = $Host.UI.RawUI.BufferSize.Height
+        if ($script:Width -eq -1) {
+            $script:Width = $menu.Content.ItemMaxLen
+        }
+        
+        if ($script:X -eq -1) {
+            # Move the menu horizontally to the middle of the window
+            $script:X = [Math]::Floor($Host.UI.RawUI.WindowSize.Width / 2) - $script:Width
+        } elseif ($script:X + $script:Width + ($EdgeWidth * 2) -ge $Host.UI.RawUI.WindowSize.Width) {
+            $script:X = $Host.UI.RawUI.WindowSize.Width - ($script:Width + $EdgeWidth * 2)
+        }
 
-        $menu | Add-Member -MemberType ScriptMethod -Name SetX -Value `
-        {
-            Param(
-                [Int]$newX
-            )
-            if ($newX + $script:Width + ($EdgeWidth * 2) -ge $maxWidth) {
-                $newX = $maxWidth - ($script:Width + $EdgeWidth * 2)
+        if ($script:Height -eq -1) {
+            if ($menu.Content.Items.Count + $EdgeHeight * 2 -gt $Host.UI.RawUI.WindowSize.Height) {
+                # The square will not fit in the window, make it the same height as the window
+                $script:Height = $Host.UI.RawUI.WindowSize.Height - 1 - $EdgeHeight * 2
+            } else {
+                $script:Height = $menu.Content.Items.Count
             }
-            $script:X = $newX
         }
 
-        $menu | Add-Member -MemberType ScriptMethod -Name SetY -Value `
-        {
-            Param(
-                [Int]$newY
-            )
-            if ($newY + $script:Height + ($EdgeHeight * 2) -gt $maxHeight) {
-                $newY = $maxHeight - ($script:Height + $EdgeHeight * 2)
+        if ($script:Y -eq -1) {
+            # Move the menu vertically to the middle of the window
+            $windowMiddle = $Host.UI.RawUI.WindowPosition.Y + $Host.UI.RawUI.WindowSize.Height / 2
+            $windowMiddle = [Math]::Floor($windowMiddle)
+            $script:Y = $windowMiddle - [Math]::Floor($script:Height / 2)
+        } else {
+            $Script:Y += $Host.UI.RawUI.WindowPosition.Y
+            $windowBottom = $Host.UI.RawUI.WindowPosition.Y + $Host.UI.RawUI.WindowSize.Height
+            if ($script:Height + $EdgeHeight * 2 -gt $Host.UI.RawUI.WindowSize.Height) {
+                # The height of the menu fills the full window, moving 
+                # anywhere would mean moving outside it
+                $script:Y = $Host.UI.RawUI.WindowPosition.Y
+            } elseif ($script:Y + $script:Height + ($EdgeHeight * 2) -gt $windowBottom) {
+                $Script:Y = $windowBottom - ($script:Height + ($EdgeHeight * 2))
             }
-            $script:Y = $newY
-        }
-
-        $menu | Add-Member -MemberType ScriptMethod -Name SetWidth -Value `
-        {
-            Param(
-                [Int]$newWidth
-            )
-            if ($script:X + $newWidth + ($EdgeWidth * 2) -ge $maxWidth) {
-                $script:X = $maxWidth - ($script:Width + $EdgeWidth * 2)
-            }
-            $script:Width = $newWidth
-        }
-
-        $menu | Add-Member -MemberType ScriptMethod -Name SetHeight -Value `
-        {
-            Param(
-                [Int]$newHeight
-            )
-            if ($script:Y + $newHeigth + ($EdgeHeight * 2) -ge $maxHeight) {
-                $script:Y = $maxHeight - ($script:Height + $EdgeHeight * 2)
-            }
-            $script:Height = $newHeight
-        }
-
-        # Peruse these methods to automatically correct menu to within buffer boundaries
-        $menu.SetX($Script:X)
-        $menu.SetY($Script:Y)
-        $menu.SetWidth($Script:Width)
-        $menu.SetHeight($script:Height)
-
-        # NOTE This is a sin:
-        $initX = 0
-        $initY = 0
-        $initWidth = 0
-        $initHeight = 0
-        if ($script:X -ne -1 ) {
-            $initX = $script:X
-        }
-        if ($script:Y -ne -1 ) {
-            $initY = $script:Y
-        }
-        if ($script:Width -ne -1 ) {
-            $initWidth = $script:Width
-        }
-        if ($script:Height -ne -1 ) {
-            $initHeight = $script:Height
         }
 
         $menu | Add-Member -MemberType NoteProperty -Name Square -Value (
-            New-Square -X $initX -Y $initY -Width $initWidth -Height $initHeight -Character $Character `
+            New-Square -X $script:X -Y $script:Y `
+                -Width $script:Width -Height $script:Height -Character $Character `
                 -ForegroundColor $ItemColor -BackgroundColor $BackgroundColor
         )
 
-        $menu | Add-Member -MemberType ScriptMethod -Name SetSquareWidthToItemWidth -Value `
-        {
-            $this.Square.SetWidth($this.Content.ItemMaxLen)
-        }
-
-        $menu | Add-Member -MemberType ScriptMethod -Name SetSquareHeightToItemHeight -Value `
-        {
-            if ($this.Content.Items.Count + $EdgeHeight * 2 -gt $Host.UI.RawUI.WindowSize.Height) {
-                # The square will not fit in the window, make it the same height as the window
-                $this.Square.SetHeight($Host.UI.RawUI.WindowSize.Height - $EdgeHeight * 2)
-            } else {
-                $this.Square.SetHeight($this.Content.Items.Count)
-            }
-        }
-
-        $menu | Add-Member -MemberType ScriptMethod -Name SetSquareToItemSize -Value `
-        {
-            $this.SetSquareWidthToItemWidth()
-            $this.SetSquareHeightToItemHeight()
-        }
-
-        if ($script:Width -eq -1 -and $script:Height -eq -1) {
-            $menu.SetSquareToItemSize()
-        } elseif ($script:Width -eq -1) {
-            $menu.SetSquareWidthToItemWidth()
-        } elseif ($script:Height -eq -1) {
-            $menu.SetSquareHeightToItemHeight()
-        }
-
         $menu.Square.GrowWidth($menu.EdgeWidth * 2)
         $menu.Square.GrowHeight($menu.EdgeHeight * 2)
-         
-        if ($script:X -eq -1 -and $script:Y -eq -1) {
-            # Move the menu horizontally to the middle of the window
-            $menu.Square.SetPosition(
-                ([Math]::Floor($Host.UI.RawUI.WindowSize.Width / 2) - $menu.Square.Width),
-                ($menu.Square.Position.Y)
-            )
-
-            # Move the menu vertically to the middle of the window
-            $menu.Square.SetPosition(
-                ($menu.Square.Position.X),
-                (
-                    ($menu.Square.Position.Y + [Math]::Floor($Host.UI.RawUI.WindowSize.Height / 2)) - `
-                    [Math]::Floor($menu.Square.Height / 2)
-                )
-            )
-        }
 
         # Set which line to write the first item to the beginning of the menu
         $firstMenuItemLineNumber = $menu.Square.Position.Y + $menu.EdgeHeight
@@ -466,6 +380,7 @@ function New-Menu
         # Find previous item matching a pattern
         $menu | Add-Member -MemberType ScriptMethod -Name FindPreviousItem -Value `
         {
+            # TODO Implement
             # For example, find the previous item from the currently selected one 
             # the name of which starts with X and move to it
         }
