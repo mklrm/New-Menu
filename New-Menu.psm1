@@ -20,6 +20,8 @@ function New-Menu
         [Parameter(Mandatory=$false)]
         [ValidateSet('Multiselect','List','Default')]
         [String]$Mode = 'Default',
+        # A title / help text to display above the menu
+        [String[]]$Title,
         # Horizontal position of the upper left corner
         [ValidateRange(-1, [int]::MaxValue)][int]$X = -1,
         # Vertical position of the upper left corner
@@ -120,7 +122,7 @@ function New-Menu
             EdgeWidth = $EdgeWidth
             EdgeHeight = $EdgeHeight
         }
-
+        
         $menu | Add-Member -MemberType NoteProperty -Name ID -Value (Get-Random)
 
         if ($script:Width -eq -1) {
@@ -146,6 +148,10 @@ function New-Menu
                 $script:Height = $menu.Content.Items.Count
             }
         }
+        
+        if ($Title) {
+            $script:Height = $script:Height - $Title.Count - 1
+        }
 
         if ($script:Y -eq -1) {
             # Move the menu vertically to the middle of the window
@@ -162,6 +168,34 @@ function New-Menu
             } elseif ($script:Y + $script:Height + ($EdgeHeight * 2) -gt $windowBottom) {
                 $Script:Y = $windowBottom - ($script:Height + ($EdgeHeight * 2))
             }
+        }
+
+        if ($Title) {
+            $script:Y = $script:Y + $Title.Count + 1
+        }
+
+        if ($Title) {
+            $titleWidth = 0
+            $titleX = $Script:X
+            foreach ($t in $Title) {
+                if ($t.length -gt $titleWidth) {
+                    $titleWidth = $t.length
+                }
+            }
+            if ($titleWidth -lt ($script:Width + $EdgeWidth * 2)) {
+                $titleWidth = $script:Width + $EdgeWidth * 2
+            }
+            if ($titleWidth -gt ($script:Width + $EdgeWidth * 2)) {
+                $titleX = [Math]::Floor($script:X - ($titleWidth - ($script:Width + $EdgeWidth * 2)) / 2)
+            }            $i = $Title.count
+            $titleList = foreach ($t in $Title) {
+                $titleY = ($script:Y - $EdgeHeight - $i)
+                New-Square -X $titleX -Y  $titleY `
+                    -Width $titleWidth -Height 1 -Character $Character `
+                    -ForegroundColor $ItemColor -BackgroundColor $BackgroundColor
+                $i--
+            }
+            $menu | Add-Member -MemberType NoteProperty -Name Title -Value $titleList
         }
 
         $menu | Add-Member -MemberType NoteProperty -Name Square -Value (
@@ -217,6 +251,24 @@ function New-Menu
             $color
         }
 
+        $menu | Add-Member -MemberType ScriptMethod -Name WriteTitle -Value `
+        {
+            if (-not $Title) { return }
+            $i = 0
+            foreach ($t in $this.Title) {
+                $pos = $Host.UI.RawUI.WindowPosition
+                $pos.X = $t.Position.X
+                $pos.Y = $t.Position.Y
+                $outBuffer = $Host.UI.RawUI.NewBufferCellArray(
+                    $Title[$i],
+                    $ItemColor, 
+                    $BackgroundColor
+                )
+                $Host.UI.RawUI.SetBufferContents($pos,$outBuffer)
+                $i++
+            }
+        }
+
         $menu | Add-Member -MemberType ScriptMethod -Name WriteItem -Value `
         {
             Param(
@@ -258,6 +310,10 @@ function New-Menu
 
         $menu | Add-Member -MemberType ScriptMethod -Name WriteMenu -Value `
         {
+            foreach ($t in $this.Title) {
+                $t.WriteToConsoleBuffer()
+            }
+            $this.WriteTitle()
             $this.Square.WriteToConsoleBuffer()
             $this.WriteItems()
         }
@@ -430,6 +486,9 @@ function New-Menu
         $menu | Add-Member -MemberType ScriptMethod -Name Exit -Value `
         {
             # Restore the console buffer from before the menu was written
+            foreach ($t in $this.Title) {
+                $t.RestoreBuffer()
+            }
             $this.Square.RestoreBuffer()
         }
 
