@@ -50,6 +50,14 @@ function New-Menu
     # pass the input object from pipeline... for which there's probably 
     # a better way of doing than this.
     Begin {
+        if ($Width -eq 0) {
+            Write-Host "A width of zero is not supported." -ForegroundColor Red
+            exit
+        }
+        if ($Height -eq 0) {
+            Write-Host "A height of zero is not supported." -ForegroundColor Red
+            exit
+        }
         $tmp = $()
         $script:X = $X
         $script:Y = $Y
@@ -74,8 +82,6 @@ function New-Menu
         if (-not $BackgroundColor) { $BackgroundColor = $Host.UI.RawUI.ForegroundColor }
 
         # TODO Add a title / help text
-        # TODO Trying to move a menu that's the full height of a 
-        # buffer still causes an error
         # TODO ?-icon for invoking help. No other help texts etc. 
         # required. Just tell user Esc is cancel, Enter confirm.
         # TODO A search function such like pressing / starts taking 
@@ -99,8 +105,6 @@ function New-Menu
 
         $firstMenuItemLineNumber = 0 # Line on which to write the first displayed item
          $lastMenuItemLineNumber = 0 # Line on which to write the last displayed item
-        #$firstDisplayedItemIndex = 0 # Index number of the first item getting displayed
-        # $lastDisplayedItemIndex = 0 # Index number of the last item getting displayed
         
         if ($InputObject -isnot [Array]) {
             $InputObject = @($InputObject)
@@ -122,10 +126,14 @@ function New-Menu
         if ($script:Width -eq -1) {
             $script:Width = $menu.Content.ItemMaxLen
         }
+
+        if ($script:Width -gt $Host.UI.RawUI.WindowSize.Width) {
+            $script:Width = $Host.UI.RawUI.WindowSize.Width
+        }
         
         if ($script:X -eq -1) {
             # Move the menu horizontally to the middle of the window
-            $script:X = [Math]::Floor($Host.UI.RawUI.WindowSize.Width / 2) - $script:Width
+            $script:X = [Math]::Floor($Host.UI.RawUI.WindowSize.Width / 2) - [Math]::Floor(($script:Width / 2))
         } elseif ($script:X + $script:Width + ($EdgeWidth * 2) -ge $Host.UI.RawUI.WindowSize.Width) {
             $script:X = $Host.UI.RawUI.WindowSize.Width - ($script:Width + $EdgeWidth * 2)
         }
@@ -170,9 +178,6 @@ function New-Menu
         
         # Set which line to write the last item to the end of the menu
         $lastMenuItemLineNumber = $menu.Square.Position.Y + $menu.Square.Height - ($menu.EdgeHeight * 2)
-
-        # Set the index of the last item to write to correspond to the height of the menu
-        #$lastDisplayedItemIndex = $firstDisplayedItemIndex + $menu.Square.Height - ($menu.EdgeHeight * 2)
 
         # At this point we can simply start picking the indeces from 0, incrementing by 1 on each line
         $i = 0
@@ -224,8 +229,12 @@ function New-Menu
             $pos.X = $this.Square.Position.X + $this.EdgeWidth
             $pos.Y = $LineNumber
 
+            $itemName = $this.Content.GetItemName($ItemIndex)
+            if ($itemName.length -gt $script:Width) {
+                $itemName = $itemName.SubString(0,$script:Width)
+            }
             $outBuffer = $Host.UI.RawUI.NewBufferCellArray(
-                $this.Content.GetItemName($ItemIndex),
+                $itemName,
                 $ItemColor, 
                 $this.Square.BackgroundColor
             )
@@ -271,7 +280,8 @@ function New-Menu
         $menu | Add-Member -MemberType ScriptMethod -Name NextItem -Value `
         {
             # Write the current item with default colors
-            $currentItemLine = ($script:lineMap | Where-Object { $_.ItemIndex -eq $this.Content.CurrentItem }).Number
+            $currentItemLine = ($script:lineMap | `
+                Where-Object { $_.ItemIndex -eq $this.Content.CurrentItem }).Number
             $fgColor = $ItemColor
             if ($this.Content.SelectedItems -contains $this.Content.CurrentItem) {
                 $fgColor = $ItemSelectedColor
@@ -280,7 +290,8 @@ function New-Menu
 
             # Select next item and write it with ItemHighlightColor
             $this.Content.NextItem()
-            $currentItemLine = ($script:lineMap | Where-Object { $_.ItemIndex -eq $this.Content.CurrentItem }).Number
+            $currentItemLine = ($script:lineMap | `
+                Where-Object { $_.ItemIndex -eq $this.Content.CurrentItem }).Number
             # See if we have run out of items on $script:lineMap
             if (-not $currentItemLine) {
                 # Rebuild $script:lineMap
@@ -297,7 +308,8 @@ function New-Menu
         $menu | Add-Member -MemberType ScriptMethod -Name PreviousItem -Value `
         {
             # Write the current item with default colors
-            $currentItemLine = ($script:lineMap | Where-Object { $_.ItemIndex -eq $this.Content.CurrentItem }).Number
+            $currentItemLine = ($script:lineMap | `
+                Where-Object { $_.ItemIndex -eq $this.Content.CurrentItem }).Number
             $fgColor = $ItemColor
             if ($this.Content.SelectedItems -contains $this.Content.CurrentItem) {
                 $fgColor = $ItemSelectedColor
@@ -306,7 +318,8 @@ function New-Menu
 
             # Select previous item and write it with ItemHighlightColor
             $this.Content.PreviousItem()
-            $currentItemLine = ($script:lineMap | Where-Object { $_.ItemIndex -eq $this.Content.CurrentItem }).Number
+            $currentItemLine = ($script:lineMap | `
+                Where-Object { $_.ItemIndex -eq $this.Content.CurrentItem }).Number
             # See if we have run out of items on $script:lineMap
             if (-not $currentItemLine) {
                 # First move back on the list of items to find the correct one to start writing from
@@ -324,7 +337,9 @@ function New-Menu
         $menu | Add-Member -MemberType ScriptMethod -Name NextPage -Value `
         {
             # Check that there's actually more items on the list than can fit on the menu
-            if ($this.Content.Items.Count -le $lastMenuItemLineNumber - $firstMenuItemLineNumber - 1) { return }
+            if ($this.Content.Items.Count -le $lastMenuItemLineNumber - $firstMenuItemLineNumber - 1) {
+                return
+            }
 
             # Get to the last item on $script:linemap using $this.Content.NextItem()
             while ($this.Content.CurrentItem -ne $script:linemap[-1].ItemIndex) {
@@ -338,7 +353,9 @@ function New-Menu
         $menu | Add-Member -MemberType ScriptMethod -Name PreviousPage -Value `
         {
             # Check that there's actually more items on the list than can fit on the menu
-            if ($this.Content.Items.Count -le $lastMenuItemLineNumber - $firstMenuItemLineNumber - 1) { return }
+            if ($this.Content.Items.Count -le $lastMenuItemLineNumber - $firstMenuItemLineNumber - 1) {
+                return
+            }
 
             # Get to the first item on $script:linemap using $this.Content.PreviousItem()
             while ($this.Content.CurrentItem -ne $script:linemap[0].ItemIndex) {
