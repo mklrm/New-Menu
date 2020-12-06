@@ -64,6 +64,7 @@ function New-Menu
         $windowWidth = $Host.UI.RawUI.WindowSize.Width
         $windowHeight = $Host.UI.RawUI.WindowSize.Height
         $windowY = $Host.UI.RawUI.WindowPosition.Y
+        $windowBottom = $windowY + $windowHeight
     } Process {
         $tmp += $InputObject
     } End {
@@ -128,7 +129,6 @@ function New-Menu
         }
         
         if ($X -eq -1) {
-            # Move the menu horizontally to the middle of the window
             $X = [Math]::Floor($windowWidth / 2) - [Math]::Floor(($Width / 2))
         } elseif ($X + $Width + ($EdgeWidth * 2) -ge $windowWidth) {
             $X = $windowWidth - ($Width + $EdgeWidth * 2)
@@ -136,21 +136,14 @@ function New-Menu
 
         if ($Height -eq -1) {
             if ($menu.Content.Items.Count + $EdgeHeight * 2 -gt $windowHeight) {
-                # The square will not fit in the window, make it the same height as the window
-                $Height = $windowHeight - 1 - $EdgeHeight * 2 # NOTE Magic number 1
+                $Height = $windowHeight - $EdgeHeight * 2
             } else {
                 $Height = $menu.Content.Items.Count
             }
-        } elseif ($Height + $EdgeHeight * 2 -gt $windowHeight) {
-            $Height = $windowHeight - 1 - $EdgeHeight * 2
-            # TODO the "- 1" here was just one place where trial and error kinda got us there, not 
-            # perfectly though. If I ever go that nuts, understand why the bottom edge of the menu 
-            # goes missing on what seems like one particular number with the - 1 and anything above 
-            # that number without the - 1
-            # For example, with a WindowSize.Y == 63, bottom edge goes missing at Height 64 but returns 
-            # with Heights beyond it with the - 1, 
-            # Without the magic - 1 it goes missing from 61 and up never to return. I lost track 
-            # of something at some point.
+        }
+
+        if ($Height + $EdgeHeight * 2 -gt $windowHeight) {
+            $Height = $windowHeight - $EdgeHeight * 2
         }
         
         if ($Title) {
@@ -158,20 +151,17 @@ function New-Menu
         }
 
         if ($Y -eq -1) {
-            # Move the menu vertically to the middle of the window
             $windowMiddle = $windowY + $windowHeight / 2
             $windowMiddle = [Math]::Floor($windowMiddle)
             $Y = $windowMiddle - [Math]::Floor($Height / 2)
         } else {
             $Y += $windowY
-            $windowBottom = $windowY + $windowHeight
-            if ($Height + $EdgeHeight * 2 -gt $windowHeight) {
-                # The height of the menu fills the full window, moving 
-                # anywhere would mean moving outside it
-                $Y = $windowY
-            } elseif ($Y + $Height + ($EdgeHeight * 2) -gt $windowBottom) {
-                $Y = $windowBottom - ($Height + ($EdgeHeight * 2))
-            }
+        }
+
+        if ($Height + $EdgeHeight * 2 -gt $windowHeight) {
+            $Y = $windowY
+        } elseif ($Y + $Height + $EdgeHeight * 2 -gt $windowBottom) {
+            $Y = $windowBottom - ($Height + $EdgeHeight * 2)
         }
 
         if ($Title) {
@@ -214,6 +204,11 @@ function New-Menu
         
         # Set which line to write the last item to the end of the menu
         $lastMenuItemLineNumber = $menu.Square.Position.Y + $menu.Square.Height - ($EdgeHeight * 2)
+
+        # Fixes an issue with one extra item getting written below the square
+        if ($EdgeHeight -eq 0 -and $menu.Content.Items.Count -gt $windowHeight) {
+            $lastMenuItemLineNumber--
+        }
 
         # At this point we can simply start picking the indeces from 0, incrementing by 1 on each line
         $i = 0
