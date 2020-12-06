@@ -12,6 +12,9 @@ function New-Menu
             Mandatory=$false,
             ValueFromPipeline=$true
         )][System.Object[]]$InputObject,
+        # Align Title Center of Left
+        [ValidateSet('Center','Left')]
+        [String]$AlignText = 'Left',
         # The name of the property of items to be displayed on the menu, such as Name
         [Parameter(Mandatory=$false)][String]$DisplayProperty,   
         #     Default: Select one by hitting Enter
@@ -291,11 +294,15 @@ function New-Menu
                 [String]$ItemColor = $this.GetItemColor($ItemIndex)
             )
 
+            $itemName = $this.Content.GetItemName($ItemIndex)
+
             $pos   = $Host.UI.RawUI.WindowPosition
             $pos.X = $this.Square.Position.X + $EdgeWidth
+            if ($AlignText -eq 'Center' -and $itemName.Length -lt $Width) {
+                $pos.X += [Math]::Floor(($Width - $itemName.Length) / 2)
+            }
             $pos.Y = $LineNumber
 
-            $itemName = $this.Content.GetItemName($ItemIndex)
             if ($itemName.Length -gt $Width) {
                 $itemName = $itemName.SubString(0,$Width)
             }
