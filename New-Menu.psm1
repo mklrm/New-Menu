@@ -22,6 +22,9 @@ function New-Menu
         [String]$Mode = 'Default',
         # A title / help text to display above the menu
         [String[]]$Title,
+        # Align Title Center of Left
+        [ValidateSet('Center','Left')]
+        [String]$AlignTitle = 'Center',
         # Horizontal position of the upper left corner
         [ValidateRange(-1, [int]::MaxValue)][int]$X = -1,
         # Vertical position of the upper left corner
@@ -84,8 +87,12 @@ function New-Menu
         if (-not $InputObject) { return }
 
         # These can't seem to be defined directly as the default values in the parameters
-        if (-not $ItemColor) { $ItemColor = $Host.UI.RawUI.BackgroundColor }
-        if (-not $BackgroundColor) { $BackgroundColor = $Host.UI.RawUI.ForegroundColor }
+        if (-not $ItemColor) {
+            $ItemColor = $Host.UI.RawUI.BackgroundColor
+        }
+        if (-not $BackgroundColor) {
+            $BackgroundColor = $Host.UI.RawUI.ForegroundColor
+        }
 
         # TODO ?-icon for invoking help. No other help texts etc. 
         # required. Just tell user Esc is cancel, Enter confirm.
@@ -174,8 +181,8 @@ function New-Menu
             $titleWidth = 0
             $titleX = $X
             foreach ($t in $Title) {
-                if ($t.length -gt $titleWidth) {
-                    $titleWidth = $t.length
+                if ($t.Length -gt $titleWidth) {
+                    $titleWidth = $t.Length
                 }
             }
             if ($titleWidth -lt $Width + $EdgeWidth * 2) {
@@ -184,7 +191,7 @@ function New-Menu
             if ($titleWidth -gt $Width + $EdgeWidth * 2) {
                 $titleX = [Math]::Floor($X - ($titleWidth - ($Width + $EdgeWidth * 2)) / 2)
             }
-            $i = $Title.count
+            $i = $Title.Count
             $titleList = foreach ($t in $Title) {
                 $titleY = $Y - $EdgeHeight - $i
                 New-Square -X $titleX -Y $titleY `
@@ -255,13 +262,16 @@ function New-Menu
             $color
         }
 
-        $menu | Add-Member -MemberType ScriptMethod -Name WriteTitle -Value `
+        $menu | Add-Member -MemberType ScriptMethod -Name WriteTitles -Value `
         {
             if (-not $Title) { return }
             $i = 0
             foreach ($t in $this.Title) {
                 $pos = $Host.UI.RawUI.WindowPosition
                 $pos.X = $t.Position.X
+                if ($AlignTitle -eq 'Center' -and $t.Length -lt $titleWidth) {
+                    $pos.X += [Math]::Floor(($titleWidth - $Title[$i].Length) / 2)
+                }
                 $pos.Y = $t.Position.Y
                 $outBuffer = $Host.UI.RawUI.NewBufferCellArray(
                     $Title[$i],
@@ -286,7 +296,7 @@ function New-Menu
             $pos.Y = $LineNumber
 
             $itemName = $this.Content.GetItemName($ItemIndex)
-            if ($itemName.length -gt $Width) {
+            if ($itemName.Length -gt $Width) {
                 $itemName = $itemName.SubString(0,$Width)
             }
             $outBuffer = $Host.UI.RawUI.NewBufferCellArray(
@@ -316,7 +326,7 @@ function New-Menu
             foreach ($t in $this.Title) {
                 $t.WriteToConsoleBuffer()
             }
-            $this.WriteTitle()
+            $this.WriteTitles()
             $this.Square.WriteToConsoleBuffer()
             $this.WriteItems()
         }
@@ -533,7 +543,7 @@ function New-Menu
                     Default {
                         if ($Mode -ne 'List') {
                             $key = $key.ToString()
-                            if ($key -match '[a-zA-Z]\d{0,1}' -and $key.length -le 2) {
+                            if ($key -match '[a-zA-Z]\d{0,1}' -and $key.Length -le 2) {
                                 # Numbers get returned with a leading D
                                 if ($key -match '^D\d') {
                                     $key = $key -replace '^D'
