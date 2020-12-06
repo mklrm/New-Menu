@@ -61,10 +61,9 @@ function New-Menu
             exit
         }
         $tmp = $()
-        $script:X = $X
-        $script:Y = $Y
-        $script:Width = $Width
-        $script:Height = $Height
+        $windowWidth = $Host.UI.RawUI.WindowSize.Width
+        $windowHeight = $Host.UI.RawUI.WindowSize.Height
+        $windowY = $Host.UI.RawUI.WindowPosition.Y
     } Process {
         $tmp += $InputObject
     } End {
@@ -117,37 +116,33 @@ function New-Menu
                         } else {
                             New-MenuContent -Array $InputObject -DisplayProperty $DisplayProperty
                         }
-            ItemHighlightColor = $ItemHighlightColor
-            EdgeWidth = $EdgeWidth
-            EdgeHeight = $EdgeHeight
         }
-        
         $menu | Add-Member -MemberType NoteProperty -Name ID -Value (Get-Random)
 
-        if ($script:Width -eq -1) {
-            $script:Width = $menu.Content.ItemMaxLen
+        if ($Width -eq -1) {
+            $Width = $menu.Content.ItemMaxLen
         }
 
-        if ($script:Width -gt $Host.UI.RawUI.WindowSize.Width) {
-            $script:Width = $Host.UI.RawUI.WindowSize.Width
+        if ($Width -gt $windowWidth) {
+            $Width = $windowWidth
         }
         
-        if ($script:X -eq -1) {
+        if ($X -eq -1) {
             # Move the menu horizontally to the middle of the window
-            $script:X = [Math]::Floor($Host.UI.RawUI.WindowSize.Width / 2) - [Math]::Floor(($script:Width / 2))
-        } elseif ($script:X + $script:Width + ($EdgeWidth * 2) -ge $Host.UI.RawUI.WindowSize.Width) {
-            $script:X = $Host.UI.RawUI.WindowSize.Width - ($script:Width + $EdgeWidth * 2)
+            $X = [Math]::Floor($windowWidth / 2) - [Math]::Floor(($Width / 2))
+        } elseif ($X + $Width + ($EdgeWidth * 2) -ge $windowWidth) {
+            $X = $windowWidth - ($Width + $EdgeWidth * 2)
         }
 
-        if ($script:Height -eq -1) {
-            if ($menu.Content.Items.Count + $EdgeHeight * 2 -gt $Host.UI.RawUI.WindowSize.Height) {
+        if ($Height -eq -1) {
+            if ($menu.Content.Items.Count + $EdgeHeight * 2 -gt $windowHeight) {
                 # The square will not fit in the window, make it the same height as the window
-                $script:Height = $Host.UI.RawUI.WindowSize.Height - 1 - $EdgeHeight * 2
+                $Height = $windowHeight - 1 - $EdgeHeight * 2 # NOTE Magic number 1
             } else {
-                $script:Height = $menu.Content.Items.Count
+                $Height = $menu.Content.Items.Count
             }
-        } elseif ($script:Height + $EdgeHeight * 2 -gt $Host.UI.RawUI.WindowSize.Height) {
-            $script:Height = $Host.UI.RawUI.WindowSize.Height - $EdgeHeight * 2
+        } elseif ($Height + $EdgeHeight * 2 -gt $windowHeight) {
+            $Height = $windowHeight - 1 - $EdgeHeight * 2
             # TODO the "- 1" here was just one place where trial and error kinda got us there, not 
             # perfectly though. If I ever go that nuts, understand why the bottom edge of the menu 
             # goes missing on what seems like one particular number with the - 1 and anything above 
@@ -159,44 +154,44 @@ function New-Menu
         }
         
         if ($Title) {
-            $script:Height = $script:Height - $Title.Count
+            $Height = $Height - $Title.Count
         }
 
-        if ($script:Y -eq -1) {
+        if ($Y -eq -1) {
             # Move the menu vertically to the middle of the window
-            $windowMiddle = $Host.UI.RawUI.WindowPosition.Y + $Host.UI.RawUI.WindowSize.Height / 2
+            $windowMiddle = $windowY + $windowHeight / 2
             $windowMiddle = [Math]::Floor($windowMiddle)
-            $script:Y = $windowMiddle - [Math]::Floor($script:Height / 2)
+            $Y = $windowMiddle - [Math]::Floor($Height / 2)
         } else {
-            $Script:Y += $Host.UI.RawUI.WindowPosition.Y
-            $windowBottom = $Host.UI.RawUI.WindowPosition.Y + $Host.UI.RawUI.WindowSize.Height
-            if ($script:Height + $EdgeHeight * 2 -gt $Host.UI.RawUI.WindowSize.Height) {
+            $Y += $windowY
+            $windowBottom = $windowY + $windowHeight
+            if ($Height + $EdgeHeight * 2 -gt $windowHeight) {
                 # The height of the menu fills the full window, moving 
                 # anywhere would mean moving outside it
-                $script:Y = $Host.UI.RawUI.WindowPosition.Y
-            } elseif ($script:Y + $script:Height + ($EdgeHeight * 2) -gt $windowBottom) {
-                $Script:Y = $windowBottom - ($script:Height + ($EdgeHeight * 2))
+                $Y = $windowY
+            } elseif ($Y + $Height + ($EdgeHeight * 2) -gt $windowBottom) {
+                $Y = $windowBottom - ($Height + ($EdgeHeight * 2))
             }
         }
 
         if ($Title) {
-            $script:Y = $script:Y + $Title.Count - 1
+            $Y = $Y + $Title.Count - 1
             $titleWidth = 0
-            $titleX = $Script:X
+            $titleX = $script:X
             foreach ($t in $Title) {
                 if ($t.length -gt $titleWidth) {
                     $titleWidth = $t.length
                 }
             }
-            if ($titleWidth -lt ($script:Width + $EdgeWidth * 2)) {
-                $titleWidth = $script:Width + $EdgeWidth * 2
+            if ($titleWidth -lt ($Width + $EdgeWidth * 2)) {
+                $titleWidth = $Width + $EdgeWidth * 2
             }
-            if ($titleWidth -gt ($script:Width + $EdgeWidth * 2)) {
-                $titleX = [Math]::Floor($script:X - ($titleWidth - ($script:Width + $EdgeWidth * 2)) / 2)
+            if ($titleWidth -gt ($Width + $EdgeWidth * 2)) {
+                $titleX = [Math]::Floor($X - ($titleWidth - ($Width + $EdgeWidth * 2)) / 2)
             }
             $i = $Title.count
             $titleList = foreach ($t in $Title) {
-                $titleY = ($script:Y - $EdgeHeight - $i)
+                $titleY = ($Y - $EdgeHeight - $i)
                 New-Square -X $titleX -Y  $titleY `
                     -Width $titleWidth -Height 1 -Character $Character `
                     -ForegroundColor $ItemColor -BackgroundColor $BackgroundColor
@@ -206,19 +201,19 @@ function New-Menu
         }
 
         $menu | Add-Member -MemberType NoteProperty -Name Square -Value (
-            New-Square -X $script:X -Y $script:Y `
-                -Width $script:Width -Height $script:Height -Character $Character `
+            New-Square -X $X -Y $Y `
+                -Width $Width -Height $Height -Character $Character `
                 -ForegroundColor $ItemColor -BackgroundColor $BackgroundColor
         )
 
-        $menu.Square.GrowWidth($menu.EdgeWidth * 2)
-        $menu.Square.GrowHeight($menu.EdgeHeight * 2)
+        $menu.Square.GrowWidth($EdgeWidth * 2)
+        $menu.Square.GrowHeight($EdgeHeight * 2)
 
         # Set which line to write the first item to the beginning of the menu
-        $firstMenuItemLineNumber = $menu.Square.Position.Y + $menu.EdgeHeight
+        $firstMenuItemLineNumber = $menu.Square.Position.Y + $EdgeHeight
         
         # Set which line to write the last item to the end of the menu
-        $lastMenuItemLineNumber = $menu.Square.Position.Y + $menu.Square.Height - ($menu.EdgeHeight * 2)
+        $lastMenuItemLineNumber = $menu.Square.Position.Y + $menu.Square.Height - ($EdgeHeight * 2)
 
         # At this point we can simply start picking the indeces from 0, incrementing by 1 on each line
         $i = 0
@@ -285,12 +280,12 @@ function New-Menu
             )
 
             $pos   = $Host.UI.RawUI.WindowPosition
-            $pos.X = $this.Square.Position.X + $this.EdgeWidth
+            $pos.X = $this.Square.Position.X + $EdgeWidth
             $pos.Y = $LineNumber
 
             $itemName = $this.Content.GetItemName($ItemIndex)
-            if ($itemName.length -gt $script:Width) {
-                $itemName = $itemName.SubString(0,$script:Width)
+            if ($itemName.length -gt $Width) {
+                $itemName = $itemName.SubString(0,$Width)
             }
             $outBuffer = $Host.UI.RawUI.NewBufferCellArray(
                 $itemName,
@@ -305,8 +300,7 @@ function New-Menu
         {
             if (-not $this.Content.Items) { return }
             if ($this.Content.Items.Count -eq 1) {
-                $currentItemLine = `
-                    ($script:lineMap | Where-Object { $_.ItemIndex -eq $this.Content.CurrentItem }).Number
+                $currentItemLine = ($script:lineMap | Where-Object { $_.ItemIndex -eq $this.Content.CurrentItem }).Number
                 $this.WriteItem(0, $currentItemLine)
             } else {
                 foreach ($line in $script:lineMap) {
@@ -343,8 +337,7 @@ function New-Menu
         $menu | Add-Member -MemberType ScriptMethod -Name NextItem -Value `
         {
             # Write the current item with default colors
-            $currentItemLine = ($script:lineMap | `
-                Where-Object { $_.ItemIndex -eq $this.Content.CurrentItem }).Number
+            $currentItemLine = ($script:lineMap | Where-Object { $_.ItemIndex -eq $this.Content.CurrentItem }).Number
             $fgColor = $ItemColor
             if ($this.Content.SelectedItems -contains $this.Content.CurrentItem) {
                 $fgColor = $ItemSelectedColor
@@ -371,8 +364,7 @@ function New-Menu
         $menu | Add-Member -MemberType ScriptMethod -Name PreviousItem -Value `
         {
             # Write the current item with default colors
-            $currentItemLine = ($script:lineMap | `
-                Where-Object { $_.ItemIndex -eq $this.Content.CurrentItem }).Number
+            $currentItemLine = ($script:lineMap | Where-Object { $_.ItemIndex -eq $this.Content.CurrentItem }).Number
             $fgColor = $ItemColor
             if ($this.Content.SelectedItems -contains $this.Content.CurrentItem) {
                 $fgColor = $ItemSelectedColor
@@ -381,8 +373,7 @@ function New-Menu
 
             # Select previous item and write it with ItemHighlightColor
             $this.Content.PreviousItem()
-            $currentItemLine = ($script:lineMap | `
-                Where-Object { $_.ItemIndex -eq $this.Content.CurrentItem }).Number
+            $currentItemLine = ($script:lineMap | Where-Object { $_.ItemIndex -eq $this.Content.CurrentItem }).Number
             # See if we have run out of items on $script:lineMap
             if (-not $currentItemLine) {
                 # First move back on the list of items to find the correct one to start writing from
@@ -404,8 +395,8 @@ function New-Menu
                 return
             }
 
-            # Get to the last item on $script:linemap using $this.Content.NextItem()
-            while ($this.Content.CurrentItem -ne $script:linemap[-1].ItemIndex) {
+            # Get to the last item on $script:lineMap using $this.Content.NextItem()
+            while ($this.Content.CurrentItem -ne $script:lineMap[-1].ItemIndex) {
                 $this.Content.NextItem()
             }
             # Do $this.NextItem() to move to next page
@@ -420,8 +411,8 @@ function New-Menu
                 return
             }
 
-            # Get to the first item on $script:linemap using $this.Content.PreviousItem()
-            while ($this.Content.CurrentItem -ne $script:linemap[0].ItemIndex) {
+            # Get to the first item on $script:lineMap using $this.Content.PreviousItem()
+            while ($this.Content.CurrentItem -ne $script:lineMap[0].ItemIndex) {
                 $this.Content.PreviousItem()
             }
             # Do $this.PreviousItem() to move to last page
@@ -444,15 +435,13 @@ function New-Menu
                 
                 # UpdateLineMap() moved the selected item to the last one on the menu and 
                 # wrote it in the highlightcolor. Write it in the unselected foreground color.
-                $currentItemLine = `
-                    ($script:lineMap | Where-Object { $_.ItemIndex -eq $this.Content.CurrentItem }).Number
+                $currentItemLine = ($script:lineMap | Where-Object { $_.ItemIndex -eq $this.Content.CurrentItem }).Number
                 $this.WriteItem($this.Content.CurrentItem, $currentItemLine, $ItemColor)
                 
                 # Now change the current item to the one at the top of the menu and 
                 # write it in the highlightcolor
                 $this.Content.CurrentItem = ($script:lineMap | Select-Object -First 1).ItemIndex
-                $currentItemLine = `
-                    ($script:lineMap | Where-Object { $_.ItemIndex -eq $this.Content.CurrentItem }).Number
+                $currentItemLine = ($script:lineMap | Where-Object { $_.ItemIndex -eq $this.Content.CurrentItem }).Number
                 $this.WriteItem($this.Content.CurrentItem, $currentItemLine)
             }
         }
@@ -483,8 +472,7 @@ function New-Menu
         {
             if ($Mode -eq 'Multiselect') {
                 $this.Content.ToggleCurrentItemSelection()
-                $currentItemLine = `
-                    ($script:lineMap | Where-Object { $_.ItemIndex -eq $this.Content.CurrentItem }).Number
+                $currentItemLine = ($script:lineMap | Where-Object { $_.ItemIndex -eq $this.Content.CurrentItem }).Number
                 $this.WriteItem($this.Content.CurrentItem, $currentItemLine)
             }
         }
