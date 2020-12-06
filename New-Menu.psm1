@@ -42,10 +42,8 @@ function New-Menu
         [String]$ItemSelectedColor = 'Yellow',
         # Indicates a color is both current and selected
         [String]$ItemHighlightedAndSelectedColor = 'Magenta',
-        # Edge width
-        [Int]$EdgeWidth = 2, # TODO Maybe just change the edges to a switch and don't allow resizing
-        # Edge height
-        [Int]$EdgeHeight = 1
+        # Remove edge
+        [Switch]$NoEdge
     )
 
     # This Begin-Process-End block is here just to make it possible to 
@@ -65,6 +63,12 @@ function New-Menu
         $windowHeight = $Host.UI.RawUI.WindowSize.Height
         $windowY = $Host.UI.RawUI.WindowPosition.Y
         $windowBottom = $windowY + $windowHeight
+        $EdgeWidth = 2
+        $EdgeHeight = 1
+        if ($NoEdge.IsPresent) {
+            $EdgeWidth = 0
+            $EdgeHeight = 0
+        }
     } Process {
         $tmp += $InputObject
     } End {
@@ -147,7 +151,7 @@ function New-Menu
         }
         
         if ($Title) {
-            $Height = $Height - $Title.Count
+            $Height = $Height - 1
         }
 
         if ($Y -eq -1) {
@@ -165,27 +169,31 @@ function New-Menu
         }
 
         if ($Title) {
-            $Y = $Y + $Title.Count - 1
+            $Height = $Height - $Title.Count
+            $Y = $Y + $Title.Count
             $titleWidth = 0
-            $titleX = $script:X
+            $titleX = $X
             foreach ($t in $Title) {
                 if ($t.length -gt $titleWidth) {
                     $titleWidth = $t.length
                 }
             }
-            if ($titleWidth -lt ($Width + $EdgeWidth * 2)) {
+            if ($titleWidth -lt $Width + $EdgeWidth * 2) {
                 $titleWidth = $Width + $EdgeWidth * 2
             }
-            if ($titleWidth -gt ($Width + $EdgeWidth * 2)) {
+            if ($titleWidth -gt $Width + $EdgeWidth * 2) {
                 $titleX = [Math]::Floor($X - ($titleWidth - ($Width + $EdgeWidth * 2)) / 2)
             }
             $i = $Title.count
             $titleList = foreach ($t in $Title) {
-                $titleY = ($Y - $EdgeHeight - $i)
-                New-Square -X $titleX -Y  $titleY `
+                $titleY = $Y - $EdgeHeight - $i
+                New-Square -X $titleX -Y $titleY `
                     -Width $titleWidth -Height 1 -Character $Character `
                     -ForegroundColor $ItemColor -BackgroundColor $BackgroundColor
                 $i--
+            }
+            if ($NoEdge.IsPresent) {
+                $Y++
             }
             $menu | Add-Member -MemberType NoteProperty -Name Title -Value $titleList
         }
@@ -195,7 +203,6 @@ function New-Menu
                 -Width $Width -Height $Height -Character $Character `
                 -ForegroundColor $ItemColor -BackgroundColor $BackgroundColor
         )
-
         $menu.Square.GrowWidth($EdgeWidth * 2)
         $menu.Square.GrowHeight($EdgeHeight * 2)
 
