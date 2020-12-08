@@ -12,7 +12,7 @@ function New-Menu
             Mandatory=$false,
             ValueFromPipeline=$true
         )][System.Object[]]$InputObject,
-        # Align Title Center of Left
+        # Align item names Center of Left
         [ValidateSet('Center','Left')]
         [String]$AlignText = 'Left',
         # The name of the property of items to be displayed on the menu, such as Name
@@ -52,6 +52,26 @@ function New-Menu
         [Switch]$NoEdge
     )
 
+    # TODO BUG '-Title' eats into the height of the menu when it doesn't need to
+    # TODO BUG '-InputObject <1, (1, 2) -Title '12312312312312323' -NoEdge' actually causes an error
+    # TODO Add different options for automatic positioning 
+    # of the menu, such as in the middle of the buffer or 
+    # where the cursor is at
+    # TODO ?-icon for invoking help. No other help texts etc. 
+    # required. Just tell user Esc is cancel, Enter confirm.
+    # TODO A search function such like pressing / starts taking 
+    # input and with each added character the string is matched 
+    # against the items on the menu
+    # TODO Add indicators for lists higher than the window, for example:
+    #
+    #   +
+    # ITEM 3
+    # ITEM 4
+    # ITEM 5
+    #   +
+    #
+    # ...I do not want to implement those in New-Square though. I might have to.
+        
     # This Begin-Process-End block is here just to make it possible to 
     # pass the input object from pipeline... for which there's probably 
     # a better way of doing than this.
@@ -97,24 +117,6 @@ function New-Menu
             $BackgroundColor = $Host.UI.RawUI.ForegroundColor
         }
 
-        # TODO ?-icon for invoking help. No other help texts etc. 
-        # required. Just tell user Esc is cancel, Enter confirm.
-        # TODO A search function such like pressing / starts taking 
-        # input and with each added character the string is matched 
-        # against the items on the menu
-        # TODO Add different options for automatic positioning 
-        # of the menu, such as in the middle of the buffer or 
-        # where the cursor is at
-        # TODO Add indicators for lists higher than the window, for example:
-        #
-        #   +
-        # ITEM 3
-        # ITEM 4
-        # ITEM 5
-        #   +
-        #
-        # ...I do not want to implement those in New-Square though. I might have to.
-        
         # Create a mapping object for attaching an item index number to a line number on the buffer
         $script:lineMap = @()
 
@@ -223,7 +225,7 @@ function New-Menu
         $lastMenuItemLineNumber = $menu.Square.Position.Y + $menu.Square.Height - ($EdgeHeight * 2)
 
         # Fixes an issue with one extra item getting written below the square
-        if ($EdgeHeight -eq 0 -and $menu.Content.Items.Count -gt $windowHeight) {
+        if ($EdgeHeight -eq 0) {
             $lastMenuItemLineNumber--
         }
 
