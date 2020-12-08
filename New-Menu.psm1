@@ -162,7 +162,7 @@ function New-Menu
             $Height = $windowHeight - $EdgeHeight * 2
         }
         
-        if ($Title) {
+        if ($Title -and -not $NoEdge.IsPresent) {
             $Height = $Height - 1
         }
 
@@ -181,7 +181,12 @@ function New-Menu
         }
 
         if ($Title) {
-            $Height = $Height - $Title.Count
+            if ($Height + $Title.Count + $EdgeHeight * 2 -gt $windowHeight) {
+                $Height = $Height - $Title.Count
+            }
+            if ($NoEdge.IsPresent) {
+                $Height--
+            }
             $Y = $Y + $Title.Count
             $titleWidth = 0
             $titleX = $X
