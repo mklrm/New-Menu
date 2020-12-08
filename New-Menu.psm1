@@ -52,8 +52,6 @@ function New-Menu
         [Switch]$NoEdge
     )
 
-    # TODO BUG "-Title" breaks going outside the buffer protection
-    # TODO BUG "-InputObject <1, (1, 2) -Title 12312312312312323 -NoEdge" actually causes an error
     # TODO Add different options for automatic positioning 
     # of the menu, such as in the middle of the buffer or 
     # where the cursor is at
@@ -180,6 +178,18 @@ function New-Menu
             $Y = $windowY
         } elseif ($Y + $Height + $EdgeHeight * 2 -gt $windowBottom) {
             $Y = $windowBottom - ($Height + $EdgeHeight * 2)
+        }
+        
+        if ($Title) {
+            if ($Height + $Title.Count + $EdgeHeight * 2 + 1 -gt $windowHeight) {
+                if (-not $NoEdge.IsPresent -and $title.Count -eq 1) {
+                    $Height--
+                }
+            } elseif ($NoEdge.IsPresent -and $Y + $Height + $EdgeHeight * 2 + $Title.Count + 1 -gt $windowBottom) {
+                $Y = $windowBottom - ($Height + $EdgeHeight * 2 + $Title.Count + 1)
+            } elseif ($Y + $Height + $EdgeHeight * 2 + $Title.Count -gt $windowBottom) {
+                $Y = $windowBottom - ($Height + $EdgeHeight * 2 + $Title.Count)
+            }
         }
 
         if ($Title) {
