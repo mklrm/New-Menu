@@ -52,8 +52,8 @@ function New-Menu
         [Switch]$NoEdge
     )
 
-    # TODO BUG '-Title' eats into the height of the menu when it doesn't need to
-    # TODO BUG '-InputObject <1, (1, 2) -Title '12312312312312323' -NoEdge' actually causes an error
+    # TODO BUG "-Title" breaks going outside the buffer protection
+    # TODO BUG "-InputObject <1, (1, 2) -Title 12312312312312323 -NoEdge" actually causes an error
     # TODO Add different options for automatic positioning 
     # of the menu, such as in the middle of the buffer or 
     # where the cursor is at
@@ -163,7 +163,9 @@ function New-Menu
         }
         
         if ($Title -and -not $NoEdge.IsPresent) {
-            $Height = $Height - 1
+            if ($Height + $Title.Count + $EdgeHeight * 2 -gt $windowHeight) {
+                $Height--
+            }
         }
 
         if ($Y -eq -1) {
@@ -183,9 +185,9 @@ function New-Menu
         if ($Title) {
             if ($Height + $Title.Count + $EdgeHeight * 2 -gt $windowHeight) {
                 $Height = $Height - $Title.Count
-            }
-            if ($NoEdge.IsPresent) {
-                $Height--
+                if ($NoEdge.IsPresent) {
+                    $Height--
+                }
             }
             $Y = $Y + $Title.Count
             $titleWidth = 0
