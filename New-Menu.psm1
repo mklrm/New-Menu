@@ -28,6 +28,9 @@ function New-Menu
         # Align Title Center of Left
         [ValidateSet('Center','Left')]
         [String]$AlignTitle = 'Center',
+        # Display a list of selected objects after multiselection
+        [Parameter(Mandatory=$false)]
+        [Switch]$ListSelected,
         # Horizontal position of the upper left corner
         [ValidateRange(-1, [int]::MaxValue)][int]$X = -1,
         # Vertical position of the upper left corner
@@ -499,9 +502,14 @@ function New-Menu
 
             if ($Mode -eq 'Default') {
                 $this.Content.GetCurrentItem()
-            } else {
-                $this.Square.RestoreBuffer()
-                New-Menu -InputObject $this.Content.GetSelectedItems() -Mode List
+            } elseif ($Mode -eq 'Multiselect') {
+                if ($ListSelected.IsPresent) {
+                    $this.Square.RestoreBuffer()
+                    New-Menu -InputObject $this.Content.GetSelectedItems() -Mode List
+                } else {
+                    $this.Square.RestoreBuffer()
+                    $this.Content.GetSelectedItems()
+                }
             }
         }
 
