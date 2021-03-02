@@ -568,8 +568,11 @@ function New-Menu
                         $bail = $true
                         $this.GetCurrentItem()
                     }
-                    '/' {
-                        # TODO Start searching
+                    Oem2 {
+                        # NOTE Oem2 == slash
+                        if ($Mode -ne 'List') {
+                            $this.FindNextItem((Read-Host -Prompt 'Enter what to search for'))
+                        }
                     }
                     Tab {
                         # TODO Change search direction
