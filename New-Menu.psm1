@@ -576,7 +576,7 @@ function New-Menu
                             $pos.X = $menu.Square.Position.X
                             $pos.Y = $menu.Square.Position.Y
                             $Host.UI.RawUI.CursorPosition = $pos
-                            $this.FindNextItem((Read-Host -Prompt 'Enter what to search for'))
+                            $this.FindNextItem((Read-Host -Prompt 'Search'))
                             $Host.UI.RawUI.CursorPosition = $origPos
                         }
                     }
