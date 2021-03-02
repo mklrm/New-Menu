@@ -570,12 +570,14 @@ function New-Menu
                     }
                     Oem2 {
                         # NOTE Oem2 == slash
-                        $pos = $Host.UI.RawUI.CursorPosition
-                        $pos.X = $menu.Square.Position.X
-                        $pos.Y = $menu.Square.Position.Y
-                        $Host.UI.RawUI.CursorPosition = $pos
                         if ($Mode -ne 'List') {
+                            $origPos = $Host.UI.RawUI.CursorPosition
+                            $pos = $Host.UI.RawUI.CursorPosition
+                            $pos.X = $menu.Square.Position.X
+                            $pos.Y = $menu.Square.Position.Y
+                            $Host.UI.RawUI.CursorPosition = $pos
                             $this.FindNextItem((Read-Host -Prompt 'Enter what to search for'))
+                            $Host.UI.RawUI.CursorPosition = $origPos
                         }
                     }
                     Tab {
